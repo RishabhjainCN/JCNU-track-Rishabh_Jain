@@ -1,0 +1,106 @@
+1) Find nodes for classes and interfaces.
+
+MATCH (class_interfaces) WHERE class_interfaces.entity_type IN ['class','interfaces'] return class_interfaces
+
+
+
+2) Find all classes of a package.
+
+MATCH (class_interfaces) WHERE class_interfaces.entity_type = 'class' and ( class_interfaces.file =~ '.*/intercepting-filter/src/main/java/com/iluwatar/intercepting/filter/.*' or class_interfaces.file =~ 'intercepting-filter/src/main/java/com/iluwatar/intercepting/filter/.*' ) return class_interfaces
+
+
+
+3) Find methods of a class both inherited and declared ones.
+
+match (y)-[:member]->(n) where y.entity_type = 'class'  and y.simplename = 'Soldier' and 'MethodDeclaration' in labels(n) return n
+
+
+
+4) Find transitive closure of types (find ALL distinct ancestors of a specific type).
+
+match (a)-[]->(m) where 'MethodDeclaration' in labels(m) return distinct labels(a), count(a)
+
+
+
+5) Find If statements where the condition is boolean (true/false) value. Eg.: if(false) {}
+
+
+
+
+6) Find If statements where the condition is not boolean value (an expression).
+
+
+
+
+7) Find package of a given class.
+
+match (y) where y.entity_type = 'class' and y.simplename = 'Sword' with y, y.file as yf
+return SUBSTRING(yf,0,size(yf)-size(y.simplename)-5)
+
+
+
+8) Find total cyclomatic complexity of a class as sum of cyclomatic complexity of each method that belongs to it, the methods include both inherited and derived.
+
+match (a:TypeDeclaration)-[]->(m:MethodDeclaration) where a.simplename = 'Soldier' return sum(toint(m.Cyclomatic)) as Cyclomatic_complexity
+
+
+
+9) Find all methods with 10 or more statement.
+
+match (m) where labels(m) = 'MethodDeclaration' and toint(m.CountStmt) >= 10  return m
+
+
+
+10) Find all methods with 4 or more parameters.
+
+match (a:MethodDeclaration) where toint(a.CountInput) >= 4 return a
+
+
+
+11) Find all methods with 50 or more lines of code.
+
+match (m) where labels(m) = 'MethodDeclaration' and toint(m.CountLineCode) >= 50  return m
+
+
+
+12) Calculate Tight Class Cohesion metric of a class.
+
+MATCH (Node: TypeDeclaration)-[:member]->(n:MethodDeclaration)
+WHERE Node.entity_type = 'class' and Node.simplename = 'Validator'
+with collect(n) as all_methods, tofloat(count(n)) as cn
+Match (method1)-[p]->(method2)
+where method1 in all_methods and method2 in all_methods
+return (count(p))/(cn*(cn-1)) as tight_class_cohesion
+
+
+13) Find shortest path between type_declaration and CFG_EXIT_NODE using some apoc.
+
+match(n:TypeDeclaration),(m:CFG_EXIT_NODE) return shortestPath((n)-[*]->(m)) limit 1
+
+
+
+
+
+1) Find all Singleton classes:
+
+MATCH (a:MethodDeclaration)-[:CALLBY]->(c:MethodDeclaration)
+With collect(c) as xyz,a
+where a.isConstructor = 'True' and a.modifiers =~ '.*private.*' and ALL(i in xyz where i.modifiers =~ '.*static.*') 
+with collect(a) as method_list
+MATCH (b:TypeDeclaration)-[:member]->(c:MethodDeclaration)
+where b.entity_type = 'class' and c in method_list
+return b
+
+
+
+2) Find all occurrences of Builder patterns
+
+match (n:TypeDeclaration)-[:member]->(m:MethodDeclaration)-[:parameter]->(t:SingleVariableDeclaration)-[:type]->(a)
+where m.isConstructor='True' and m.modifiers=~'.*private.*' 
+with n, m, t, a 
+match (n)-[:member]->(c) 
+where c.simplename=a.name or c.name  = a.name
+return n, m, t, a, c
+
+
+3) Find all Facade classes
